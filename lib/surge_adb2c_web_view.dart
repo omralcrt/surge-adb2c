@@ -40,12 +40,11 @@ class SurgeADB2CWebView extends StatefulWidget {
 
 class SurgeADB2CWebViewState extends State<SurgeADB2CWebView> {
   final SurgeADB2CService surgeADB2CService;
+  final PkcePair pkcePair = PkcePair.generate();
+  final UniqueKey _key = UniqueKey();
+  bool isLoading = true;
 
   SurgeADB2CWebViewState() : surgeADB2CService = SurgeADB2CService(Dio());
-
-  final PkcePair pkcePair = PkcePair.generate();
-  final _key = UniqueKey();
-  bool isLoading = true;
 
   @override
   void initState() {
@@ -59,67 +58,72 @@ class SurgeADB2CWebViewState extends State<SurgeADB2CWebView> {
       appBar: AppBar(
         leading: IconButton(
           icon: Icon(Icons.arrow_back),
-          onPressed: () {
-            Navigator.of(context).pop();
-          },
+          onPressed: () => Navigator.of(context).pop(),
         ),
       ),
       body: Stack(
         children: [
-          InAppWebView(
-            key: _key,
-            initialUrlRequest: URLRequest(
-              url: WebUri(
-                _getUserFlowUrl(
-                  userFlow: '${widget.tenantBaseUrl}/oauth2/v2.0/authorize',
-                ),
-              ),
-            ),
-            initialSettings: InAppWebViewSettings(
-              useShouldOverrideUrlLoading: true,
-              cacheEnabled: false,
-              cacheMode: CacheMode.LOAD_NO_CACHE,
-              clearCache: true,
-              clearSessionCache: true,
-            ),
-            shouldOverrideUrlLoading: (controller, navigationAction) async {
-              final uri = navigationAction.request.url!;
-              final url = uri.toString();
-              if (url.contains(
-                '${widget.redirectUrl}?code',
-              )) {
-                final response = Uri.dataFromString(url);
-                _onPageFinishedTasks(url, response);
-
-                return NavigationActionPolicy.CANCEL;
-              } else {
-                return NavigationActionPolicy.ALLOW;
-              }
-            },
-            onLoadStop: (controller, url) {
-              controller.evaluateJavascript(
-                source: """
-            document.addEventListener('focusin', function(event) {
-              if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') {
-                setTimeout(() => {
-                  event.target.scrollIntoView({behavior: 'smooth', block: 'end'});
-                }, 800); // Adjust the delay if needed
-              }
-            });
-          """,
-              );
-              setState(() {
-                isLoading = false;
-              });
-            },
-          ),
-          if (isLoading)
-            Center(
-              child: CircularProgressIndicator(),
-            ),
+          _buildWebView(),
+          if (isLoading) _buildLoadingIndicator(),
         ],
       ),
     );
+  }
+
+  InAppWebView _buildWebView() {
+    return InAppWebView(
+      key: _key,
+      initialUrlRequest: URLRequest(
+        url: WebUri(_getUserFlowUrl()),
+      ),
+      initialSettings: InAppWebViewSettings(
+        useShouldOverrideUrlLoading: true,
+        cacheEnabled: false,
+        cacheMode: CacheMode.LOAD_NO_CACHE,
+        clearCache: true,
+        clearSessionCache: true,
+      ),
+      shouldOverrideUrlLoading: _handleUrlLoading,
+      onLoadStop: _onLoadStop,
+    );
+  }
+
+  Center _buildLoadingIndicator() {
+    return Center(
+      child: CircularProgressIndicator(),
+    );
+  }
+
+  Future<NavigationActionPolicy> _handleUrlLoading(
+      InAppWebViewController controller,
+      NavigationAction navigationAction) async {
+    final uri = navigationAction.request.url!;
+    final url = uri.toString();
+    if (url.contains('${widget.redirectUrl}?code')) {
+      final response = Uri.dataFromString(url);
+      _onPageFinishedTasks(url, response);
+      return NavigationActionPolicy.CANCEL;
+    }
+    return NavigationActionPolicy.ALLOW;
+  }
+
+  void _onLoadStop(InAppWebViewController controller, Uri? url) {
+    controller.evaluateJavascript(source: _scrollToInputScript());
+    setState(() {
+      isLoading = false;
+    });
+  }
+
+  String _scrollToInputScript() {
+    return """
+      document.addEventListener('focusin', function(event) {
+        if (event.target.tagName === 'INPUT' || event.target.tagName === 'TEXTAREA') {
+          setTimeout(() => {
+            event.target.scrollIntoView({behavior: 'smooth', block: 'end'});
+          }, 800);
+        }
+      });
+    """;
   }
 
   void _onPageFinishedTasks(String url, Uri response) {
@@ -136,52 +140,38 @@ class SurgeADB2CWebViewState extends State<SurgeADB2CWebView> {
 
   Future<void> _authorizationCodeFlow(String url) async {
     final authCode = url.split('code=')[1];
-
-    await surgeADB2CService
-        .getAllTokens(
+    final tokensResponse = await surgeADB2CService.getAllTokens(
       redirectUri: widget.redirectUrl,
       clientId: widget.clientId,
       authCode: authCode,
       userFlowName: widget.userFlowName,
       tenantBaseUrl: widget.tenantBaseUrl,
-      scopes: _createScopesWithSeparator(widget.scopes, ' '),
+      scopes: widget.scopes.join(' '),
       pkcePair: pkcePair,
-    )
-        .then((value) {
-      if (value != null) {
-        _handleTokenCallbacks(surgeADB2CTokensResponse: value);
-        widget.onRedirect();
-      }
-    });
-  }
+    );
 
-  void _handleTokenCallbacks({
-    required SurgeADB2CTokensResponse surgeADB2CTokensResponse,
-  }) {
-    final accessTokenValue = surgeADB2CTokensResponse.accessToken;
-    final idTokenValue = surgeADB2CTokensResponse.idToken;
-    final refreshTokenValue = surgeADB2CTokensResponse.refreshToken;
-
-    if (accessTokenValue != null) {
-      widget.onAccessToken(accessTokenValue);
-    }
-
-    if (idTokenValue != null) {
-      widget.onIDToken(idTokenValue);
-    }
-
-    if (refreshTokenValue != null) {
-      widget.onRefreshToken(refreshTokenValue);
+    if (tokensResponse != null) {
+      _handleTokenCallbacks(tokensResponse);
+      widget.onRedirect();
     }
   }
 
-  String _getUserFlowUrl({required String userFlow}) {
+  void _handleTokenCallbacks(SurgeADB2CTokensResponse tokensResponse) {
+    if (tokensResponse.accessToken != null) {
+      widget.onAccessToken(tokensResponse.accessToken!);
+    }
+    if (tokensResponse.idToken != null) {
+      widget.onIDToken(tokensResponse.idToken!);
+    }
+    if (tokensResponse.refreshToken != null) {
+      widget.onRefreshToken(tokensResponse.refreshToken!);
+    }
+  }
+
+  String _getUserFlowUrl() {
+    final userFlow = '${widget.tenantBaseUrl}/oauth2/v2.0/authorize';
     final userFlowSplit = userFlow.split('?');
-    //Check if the user added the full user flow or just till 'authorize'
-    if (userFlowSplit.length == 1) {
-      return _concatUserFlow(userFlow);
-    }
-    return userFlow;
+    return userFlowSplit.length == 1 ? _concatUserFlow(userFlow) : userFlow;
   }
 
   String _concatUserFlow(String url) {
@@ -196,9 +186,9 @@ class SurgeADB2CWebViewState extends State<SurgeADB2CWebView> {
 
     final newParameters = StringBuffer();
     if (widget.optionalParameters.isNotEmpty) {
-      for (final param in widget.optionalParameters.entries) {
-        newParameters.write('&${param.key}=${param.value}');
-      }
+      widget.optionalParameters.forEach((key, value) {
+        newParameters.write('&$key=$value');
+      });
     }
 
     return url +
@@ -209,23 +199,12 @@ class SurgeADB2CWebViewState extends State<SurgeADB2CWebView> {
         nonceParam +
         widget.redirectUrl +
         scopeParam +
-        _createScopesWithSeparator(widget.scopes, '%20') +
+        widget.scopes.join('%20') +
         responseTypeParam +
         widget.responseType +
         promptParam +
         codeChallenge +
         codeChallengeMethod +
         newParameters.toString();
-  }
-
-  String _createScopesWithSeparator(List<String> scopeList, String separator) {
-    final allScope = StringBuffer();
-    for (final scope in scopeList) {
-      allScope
-        ..write(scope)
-        ..write(separator);
-    }
-    final result = allScope.toString();
-    return result.substring(0, result.length - separator.length);
   }
 }

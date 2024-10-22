@@ -1,6 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:pkce/pkce.dart';
-import 'package:surge_adb2c/surge_adb2c_auth_response.dart'; // Ensure you have Dio imported
+import 'package:surge_adb2c/surge_adb2c_auth_response.dart';
 
 class SurgeADB2CService {
   final Dio dio;
@@ -26,11 +26,10 @@ class SurgeADB2CService {
       },
       options: Options(contentType: Headers.formUrlEncodedContentType),
     );
-    if (response.data != null) {
-      return SurgeADB2CTokensResponse.fromJson(response.data!);
-    }
 
-    return null;
+    return response.data != null
+        ? SurgeADB2CTokensResponse.fromJson(response.data!)
+        : null;
   }
 
   Future<SurgeADB2CTokensResponse?> getAllTokens({
@@ -56,9 +55,9 @@ class SurgeADB2CService {
       },
       options: Options(contentType: Headers.formUrlEncodedContentType),
     );
-    if (response.data != null) {
-      return SurgeADB2CTokensResponse.fromJson(response.data!);
-    }
-    return null;
+
+    return response.data != null
+        ? SurgeADB2CTokensResponse.fromJson(response.data!)
+        : null;
   }
 }
