@@ -1,39 +1,93 @@
-<!--
-This README describes the package. If you publish this package to pub.dev,
-this README's contents appear on the landing page for your package.
+# Surge ADB2C Flutter Package
 
-For information about how to write a good package README, see the guide for
-[writing package pages](https://dart.dev/tools/pub/writing-package-pages).
+## Overview
 
-For general information about developing packages, see the Dart guide for
-[creating packages](https://dart.dev/guides/libraries/create-packages)
-and the Flutter guide for
-[developing packages and plugins](https://flutter.dev/to/develop-packages).
--->
-
-TODO: Put a short description of the package here that helps potential users
-know whether this package might be useful for them.
+The Surge ADB2C Flutter package provides a seamless way to integrate Azure Active Directory B2C (ADB2C) login support into your Flutter applications. This package simplifies the authentication process, allowing developers to easily implement user authentication flows using ADB2C.
 
 ## Features
 
-TODO: List what your package can do. Maybe include images, gifs, or videos.
+- **Easy Integration**: Simple setup and integration into your Flutter project.
+- **Customizable**: Supports various user flows and scopes.
+- **Token Management**: Automatically handles access tokens, ID tokens, and refresh tokens.
+- **WebView Support**: Utilizes a WebView for the authentication process.
 
-## Getting started
+## Installation
 
-TODO: List prerequisites and provide or point to information on how to
-start using the package.
+To use the Surge ADB2C package, add the following dependency to your `pubspec.yaml` file:
+```yaml
+dependencies:
+  surge_adb2c:
+  git:
+    ref: 0.0.2
+    url: https://github.com/omralcrt/surge-adb2c
+```
+
+
+Then, run the following command to install the package:
+```bash
+flutter pub get
+```
 
 ## Usage
 
-TODO: Include short and useful examples for package users. Add longer examples
-to `/example` folder.
+### Example
 
+Here’s a basic example of how to use the `SurgeADB2CWebView` in your Flutter application:
 ```dart
-const like = 'sample';
+import 'package:flutter/material.dart';
+import 'package:surge_adb2c/surge_adb2c_web_view.dart';
+
+class ExampleLoginPage extends StatelessWidget {
+  const ExampleLoginPage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return SurgeADB2CWebView(
+      tenantBaseUrl: 'your-tenant-url',
+      clientId: 'your-client-id',
+      redirectUrl: 'your-redirect-url',
+      userFlowName: 'your-user-flow',
+      scopes: ['scope1', 'scope2'],
+      onRedirect: () {
+// Handle redirect after login
+        print('Redirect occurred');
+      },
+      onAccessToken: (token) {
+// Handle access token
+        print('Access Token: $token');
+      },
+      onIDToken: (idToken) {
+// Handle ID token
+        print('ID Token: $idToken');
+      },
+      onRefreshToken: (refreshToken) {
+// Handle refresh token
+        print('Refresh Token: $refreshToken');
+      },
+    );
+  }
+}
 ```
 
-## Additional information
 
-TODO: Tell users more about the package: where to find more information, how to
-contribute to the package, how to file issues, what response they can expect
-from the package authors, and more.
+### Parameters
+
+- `tenantBaseUrl`: The base URL of your Azure AD B2C tenant.
+- `clientId`: The client ID of your application registered in Azure AD B2C.
+- `redirectUrl`: The URL to which the user will be redirected after authentication.
+- `userFlowName`: The name of the user flow to be used for authentication.
+- `scopes`: A list of scopes that your application requires.
+- `onRedirect`: Callback function that is called when a redirect occurs.
+- `onAccessToken`: Callback function that is called with the access token.
+- `onIDToken`: Callback function that is called with the ID token.
+- `onRefreshToken`: Callback function that is called with the refresh token.
+- `optionalParameters`: Additional optional parameters for the authentication request.
+- `responseType`: The type of response expected (default is 'code').
+
+## Contributing
+
+Contributions are welcome! Please feel free to submit a pull request or open an issue for any enhancements or bug fixes.
+
+## License
+
+This package is licensed under the MIT License. See the [LICENSE](LICENSE) file for more information.
