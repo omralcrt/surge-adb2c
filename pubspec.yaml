@@ -1,6 +1,6 @@
 name: surge_adb2c
 description: "Surge ADB2C support"
-version: 0.0.2
+version: 0.0.3
 homepage:
 
 environment:
