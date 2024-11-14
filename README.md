@@ -1,3 +1,8 @@
+> ⚠️ **Important Notice:** This repository has moved!  
+> The new repository is located at [https://electrode@dev.azure.com/electrode/surge-mobility-mobile-sdks/_git/surge-mobility-adb2c-auth-flutter](https://electrode@dev.azure.com/electrode/surge-mobility-mobile-sdks/_git/surge-mobility-adb2c-auth-flutter).
+> Please update your bookmarks and clone the new repository for the latest updates and support.
+
+
 # Surge ADB2C Flutter Package
 
 ## Overview
